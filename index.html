@@ -16,6 +16,11 @@
             -webkit-tap-highlight-color: transparent;
         }
 
+        /* Prevent body scroll when modal is open */
+        body.modal-open {
+            overflow: hidden;
+        }
+
         .chart-container {
             position: relative;
             width: 100%;
@@ -62,32 +67,50 @@
             box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.3);
         }
 
-        /* Hide scrollbar for horizontal scrolling tabs on mobile */
-        .no-scrollbar::-webkit-scrollbar {
-            display: none;
+        .exercise-card {
+            transition: all 0.2s ease;
+            cursor: pointer;
         }
-        .no-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
+        .exercise-card:hover {
+            border-color: #93C5FD;
+            background-color: #EFF6FF;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.1);
         }
 
-        ::-webkit-scrollbar {
-            width: 6px;
+        /* Modal Animations */
+        #modal-overlay {
+            backdrop-filter: blur(4px);
+            transition: opacity 0.3s ease;
         }
-        ::-webkit-scrollbar-track {
-            background: #F1F5F9;
+        #modal-content {
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
-        ::-webkit-scrollbar-thumb {
-            background: #CBD5E0;
-            border-radius: 4px;
-        }
+
+        /* Hide scrollbar for horizontal scrolling tabs on mobile */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #F1F5F9; }
+        ::-webkit-scrollbar-thumb { background: #CBD5E0; border-radius: 4px; }
     </style>
 </head>
 <body class="antialiased min-h-screen pb-20">
-    <!-- Chosen Palette: Clean Blues & Slates (Background: #F8FAFC, Panels: #FFFFFF, Accent: #2563EB (Blue), Text: #0F172A) -->
-    <!-- Application Structure Plan: Mobile-first SPA. Header with sticky profile stats. Section 1: Integrated Timetable & Budget Diet (shows schedule + what cheap food to eat when). Section 2: Day-by-Day Workouts (horizontal scrollable tabs for Mon-Sun). Section 3: Weekly Progression (explains how to change workouts over time). Section 4: Budget Grocery List (Visualizing cheap protein vs carbs using a Doughnut chart). -->
-    <!-- Visualization & Content Choices: 1. Radar Chart (Chart.js): Goal: Compare. Shows muscle activation for the selected day's workout. 2. Doughnut Chart (Chart.js): Goal: Inform. Shows macro split focused on budget foods. NO SVG/Mermaid used. -->
+    <!-- Chosen Palette: Clean Blues & Slates -->
+    <!-- Application Structure Plan: Added explicit exact meal plan table for clarity. Made workouts interactive to open detailed instructional modals. -->
+    <!-- Visualization & Content Choices: Radar Chart for muscle targeting, Doughnut Chart for macros. CSS/HTML modals for exercise guides (No external images/SVGs). -->
     <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+    <!-- EXERCISE MODAL (Hidden by default) -->
+    <div id="modal-overlay" class="fixed inset-0 bg-gray-900/60 z-[100] hidden flex items-center justify-center p-4 opacity-0">
+        <div id="modal-content" class="bg-white rounded-2xl w-full max-w-lg p-6 relative shadow-2xl transform scale-95 overflow-y-auto max-h-[90vh]">
+            <button id="close-modal" class="absolute top-4 right-4 text-gray-400 hover:text-gray-800 text-3xl font-bold leading-none">&times;</button>
+            <div id="modal-body">
+                <!-- Content injected via JS -->
+            </div>
+        </div>
+    </div>
 
     <header class="bg-white shadow-sm sticky top-0 z-50 border-b border-gray-200">
         <div class="max-w-4xl mx-auto px-4 py-3 flex flex-col sm:flex-row justify-between items-center gap-2">
@@ -102,12 +125,12 @@
         </div>
     </header>
 
-    <main class="max-w-4xl mx-auto px-4 mt-6 space-y-8">
+    <main class="max-w-4xl mx-auto px-4 mt-6 space-y-10">
         
-        <!-- INTEGRATED TIMETABLE & DIET -->
+        <!-- INTEGRATED TIMETABLE -->
         <section id="routine">
             <div class="mb-4">
-                <h2 class="text-xl font-bold flex items-center gap-2 text-gray-800"><span>🕒</span> Daily Schedule & Diet</h2>
+                <h2 class="text-xl font-bold flex items-center gap-2 text-gray-800"><span>🕒</span> Daily Chronotype Schedule</h2>
                 <p class="text-sm text-gray-600">Aligned with your 11 AM - 7 PM work shift. Tap a time block to see details.</p>
             </div>
             
@@ -119,16 +142,41 @@
                 <div class="md:w-7/12 glass-panel p-6 flex flex-col justify-center items-center text-center bg-gradient-to-br from-white to-blue-50" id="timeline-detail">
                     <div class="text-5xl mb-3 animate-bounce">👆</div>
                     <h3 class="text-xl font-bold text-gray-800 mb-2">Tap a Time Block</h3>
-                    <p class="text-sm text-gray-600">See exactly what to do and what budget-friendly food to eat at this time.</p>
+                    <p class="text-sm text-gray-600">See exactly what to do at this specific time of day.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- EXACT MEAL PLAN (NEW ADDITION BASED ON USER REQUEST) -->
+        <section id="exact-diet">
+            <div class="mb-4">
+                <h2 class="text-xl font-bold flex items-center gap-2 text-gray-800"><span>🍽️</span> 7-Day Exact Meal Plan</h2>
+                <p class="text-sm text-gray-600">Select a day to view your budget-friendly, high-protein menu. Target: ~2150 kcal, 100g+ Protein.</p>
+            </div>
+            
+            <div class="glass-panel p-4 md:p-6 overflow-hidden">
+                <!-- Horizontal scrollable tabs for Diet -->
+                <div class="flex overflow-x-auto gap-2 pb-2 mb-4 no-scrollbar border-b border-gray-100" id="diet-tabs">
+                    <button data-day="Mon" class="diet-tab-btn active px-4 py-2 border border-blue-600 rounded-full text-sm font-semibold text-blue-700 bg-blue-50">Mon</button>
+                    <button data-day="Tue" class="diet-tab-btn px-4 py-2 border border-gray-200 rounded-full text-sm font-semibold text-gray-600 bg-white">Tue</button>
+                    <button data-day="Wed" class="diet-tab-btn px-4 py-2 border border-gray-200 rounded-full text-sm font-semibold text-gray-600 bg-white">Wed</button>
+                    <button data-day="Thu" class="diet-tab-btn px-4 py-2 border border-gray-200 rounded-full text-sm font-semibold text-gray-600 bg-white">Thu</button>
+                    <button data-day="Fri" class="diet-tab-btn px-4 py-2 border border-gray-200 rounded-full text-sm font-semibold text-gray-600 bg-white">Fri</button>
+                    <button data-day="Sat" class="diet-tab-btn px-4 py-2 border border-gray-200 rounded-full text-sm font-semibold text-gray-600 bg-white">Sat</button>
+                    <button data-day="Sun" class="diet-tab-btn px-4 py-2 border border-gray-200 rounded-full text-sm font-semibold text-gray-600 bg-white">Sun</button>
+                </div>
+                
+                <div class="overflow-x-auto" id="diet-content">
+                    <!-- Populated by JS -->
                 </div>
             </div>
         </section>
 
         <!-- DAY-BY-DAY WORKOUTS -->
         <section id="workouts">
-            <div class="mb-4 mt-8">
-                <h2 class="text-xl font-bold flex items-center gap-2 text-gray-800"><span>🏋️</span> Daily Workouts (No Equip)</h2>
-                <p class="text-sm text-gray-600">Select today's day to see your routine.</p>
+            <div class="mb-4">
+                <h2 class="text-xl font-bold flex items-center gap-2 text-gray-800"><span>🏋️</span> Interactive Workouts</h2>
+                <p class="text-sm text-gray-600">Select a day, then <strong>click any exercise</strong> to see exactly how to perform it.</p>
             </div>
 
             <div class="glass-panel p-4 md:p-6">
@@ -157,37 +205,11 @@
             </div>
         </section>
 
-        <!-- WEEKLY PROGRESSION (How to change it over time) -->
-        <section id="progression">
-            <div class="mb-4 mt-8">
-                <h2 class="text-xl font-bold flex items-center gap-2 text-gray-800"><span>📈</span> Weekly Progression</h2>
-                <p class="text-sm text-gray-600">If you do the same thing every week, your muscles stop growing. Follow this to force growth.</p>
-            </div>
-            
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div class="glass-panel p-5 border-t-4 border-blue-400">
-                    <h3 class="font-bold text-blue-900 mb-1">Weeks 1 - 2</h3>
-                    <p class="text-xs font-semibold text-gray-500 mb-2">The Foundation</p>
-                    <p class="text-sm text-gray-700">Follow the exact reps listed in the workout plan. Focus 100% on proper form. If it says 15 reps, stop at 15. Rest 60 seconds between sets.</p>
-                </div>
-                <div class="glass-panel p-5 border-t-4 border-blue-600">
-                    <h3 class="font-bold text-blue-900 mb-1">Weeks 3 - 4</h3>
-                    <p class="text-xs font-semibold text-gray-500 mb-2">The Overload</p>
-                    <p class="text-sm text-gray-700"><strong>Add 2 to 5 reps</strong> to every exercise. (e.g., If you did 15 pushups, aim for 17-20). For planks, add 15 seconds to your hold time.</p>
-                </div>
-                <div class="glass-panel p-5 border-t-4 border-blue-800">
-                    <h3 class="font-bold text-blue-900 mb-1">Weeks 5 - 6</h3>
-                    <p class="text-xs font-semibold text-gray-500 mb-2">The Volume Spike</p>
-                    <p class="text-sm text-gray-700">Keep the higher reps from Week 3, but <strong>add a 4th set</strong> to your main exercises (Pushups, Squats, Lunges). Reduce rest time to 45 seconds.</p>
-                </div>
-            </div>
-        </section>
-
-        <!-- BUDGET GROCERY CHEAT SHEET -->
+        <!-- BUDGET GROCERY SUMMARY -->
         <section id="grocery" class="mb-10">
-            <div class="mb-4 mt-8">
-                <h2 class="text-xl font-bold flex items-center gap-2 text-gray-800"><span>🛒</span> Budget Grocery Guide</h2>
-                <p class="text-sm text-gray-600">The cheapest, easiest-to-find foods to build your 6-pack.</p>
+            <div class="mb-4">
+                <h2 class="text-xl font-bold flex items-center gap-2 text-gray-800"><span>🛒</span> Budget Grocery Split</h2>
+                <p class="text-sm text-gray-600">The cheapest, easiest-to-find foods that power the meal plan above.</p>
             </div>
 
             <div class="glass-panel p-6 flex flex-col md:flex-row items-center gap-8">
@@ -196,21 +218,20 @@
                 </div>
                 <div class="w-full md:w-1/2 space-y-4">
                     <div>
-                        <h4 class="font-bold text-red-600 text-sm uppercase tracking-wide">High Protein (Muscle Builders)</h4>
+                        <h4 class="font-bold text-red-600 text-sm uppercase tracking-wide">Protein (Muscle Builders)</h4>
                         <ul class="text-sm text-gray-700 mt-1 list-disc list-inside space-y-1">
-                            <li><strong>Soya Chunks:</strong> Cheapest protein available. Great in rice/curries.</li>
-                            <li><strong>Eggs:</strong> Buy in trays. Boil or scramble.</li>
-                            <li><strong>Dal/Lentils:</strong> Moong, Toor, Chana. High protein & fiber.</li>
-                            <li><strong>Peanut Butter:</strong> High calories & protein for cheap.</li>
+                            <li><strong>Soya Chunks:</strong> Highest protein per rupee.</li>
+                            <li><strong>Eggs:</strong> Buy in trays of 30.</li>
+                            <li><strong>Dal/Lentils:</strong> Moong, Toor, Chana.</li>
+                            <li><strong>Peanut Butter & Milk.</strong></li>
                         </ul>
                     </div>
                     <div>
-                        <h4 class="font-bold text-yellow-600 text-sm uppercase tracking-wide">High Carb (Energy Fuels)</h4>
+                        <h4 class="font-bold text-yellow-600 text-sm uppercase tracking-wide">Carbs (Energy Fuels)</h4>
                         <ul class="text-sm text-gray-700 mt-1 list-disc list-inside space-y-1">
-                            <li><strong>Bananas:</strong> Perfect pre-workout fuel.</li>
-                            <li><strong>White/Brown Rice:</strong> Easy to digest, cheap bulk carbs.</li>
-                            <li><strong>Oats:</strong> Cheap breakfast carb, keeps you full.</li>
-                            <li><strong>Potatoes/Sweet Potatoes:</strong> Excellent post-workout recovery.</li>
+                            <li><strong>Bananas:</strong> Perfect pre-workout.</li>
+                            <li><strong>Chapatis/Roti:</strong> Main staple.</li>
+                            <li><strong>Oats:</strong> Cheap breakfast bulk.</li>
                         </ul>
                     </div>
                 </div>
@@ -220,95 +241,152 @@
     </main>
 
     <script>
-        // 1. TIMELINE & DIET DATA
+        // 1. TIMELINE DATA
         const timelineData = [
-            { time: "07:30 AM", type: "action", title: "Wake Up & Hydrate", desc: "Drink 2 large glasses of water immediately. Wash face, prepare for workout.", icon: "💧" },
-            { time: "07:45 AM", type: "food", title: "Pre-Workout Snack", desc: "<strong>Diet:</strong> 1 Banana or a small handful of roasted peanuts/chana. (Very cheap, gives instant energy for the workout).", icon: "🍌" },
-            { time: "08:15 AM", type: "action", title: "💥 HOME WORKOUT", desc: "Check the Workout tab for today's routine. Train hard in your living room. No equipment needed.", icon: "🏋️", highlight: true },
-            { time: "09:15 AM", type: "food", title: "Breakfast (Muscle Builder)", desc: "<strong>Diet:</strong> 4 Whole Eggs (boiled/scrambled) AND 2 Roti or 1 Bowl of Oats. <br><br><em>Why? Eggs are the cheapest high-quality protein. Carbs replenish energy.</em>", icon: "🍳" },
-            { time: "10:00 AM", type: "action", title: "Shower & Commute", desc: "Get ready for work.", icon: "🚿" },
-            { time: "11:00 AM", type: "action", title: "Start Work Shift", desc: "Begin your 11 AM - 7 PM job.", icon: "💼" },
-            { time: "02:00 PM", type: "food", title: "Lunch (The Big Meal)", desc: "<strong>Diet:</strong> 1 bowl Rice + 1 bowl Dal (Lentils) + 50g Soya Chunks (cooked in dry spices) OR Chicken breast. <br><br><em>Why? Soya chunks are incredibly cheap and packed with protein.</em>", icon: "🍱" },
-            { time: "05:00 PM", type: "food", title: "Mid-Shift Snack", desc: "<strong>Diet:</strong> 2 slices of bread with Peanut Butter OR a big bowl of Roasted Chana (Chickpeas) with Tea. <br><br><em>Why? Prevents hunger and keeps protein synthesis going.</em>", icon: "🥜" },
-            { time: "07:00 PM", type: "action", title: "Finish Work", desc: "Commute home. Relax.", icon: "🛑" },
-            { time: "08:00 PM", type: "food", title: "Dinner (Recovery)", desc: "<strong>Diet:</strong> 3 Roti + Green Vegetable (Spinach/Cabbage) + 1 glass of Milk OR leftover Dal.<br><br><em>Why? Light on the stomach but provides casein protein (from milk) for overnight recovery.</em>", icon: "🥗" },
-            { time: "10:30 PM", type: "action", title: "Sleep Phase", desc: "Aim for 7.5 - 8 hours. Muscle grows while you sleep, not while you work out.", icon: "🛌" }
+            { time: "07:30 AM", title: "Wake Up & Hydrate", desc: "Drink 2 large glasses of water immediately. Wash face, prepare for workout.", icon: "💧" },
+            { time: "07:45 AM", title: "Pre-Workout Snack", desc: "Check 'Exact Daily Meal Plan' for details. Keep it light for energy.", icon: "🍌" },
+            { time: "08:15 AM", title: "💥 HOME WORKOUT", desc: "Check the 'Interactive Workouts' tab. Train hard in your living room. No equipment needed.", icon: "🏋️", highlight: true },
+            { time: "09:15 AM", title: "Breakfast", desc: "Check 'Exact Daily Meal Plan'. Crucial anabolic window for muscle repair.", icon: "🍳" },
+            { time: "10:00 AM", title: "Shower & Commute", desc: "Get ready for work.", icon: "🚿" },
+            { time: "11:00 AM", title: "Start Work Shift", desc: "Begin your 11 AM - 7 PM job.", icon: "💼" },
+            { time: "02:00 PM", title: "Lunch (The Big Meal)", desc: "Check 'Exact Daily Meal Plan'. This is your heaviest meal of the day.", icon: "🍱" },
+            { time: "05:00 PM", title: "Mid-Shift Snack", desc: "Check 'Exact Daily Meal Plan'. Prevents hunger and keeps protein synthesis going.", icon: "🥜" },
+            { time: "07:00 PM", title: "Finish Work", desc: "Commute home. Relax.", icon: "🛑" },
+            { time: "08:00 PM", title: "Dinner (Recovery)", desc: "Check 'Exact Daily Meal Plan'. Light on the stomach, aids overnight recovery.", icon: "🥗" },
+            { time: "10:30 PM", title: "Sleep Phase", desc: "Aim for 7.5 - 8 hours. Muscle grows while you sleep, not while you work out.", icon: "🛌" }
         ];
 
-        // 2. WORKOUT DATA (DAY BY DAY)
+        // 1.5 DIET DATA (7-DAY PLAN)
+        const dietData = {
+            "Mon": [
+                { time: "07:45 AM", meal: "Pre-Workout", items: "🍌 1 Ripe Banana + 10 Peanuts", why: "Provides instant energy for the 8:15 AM workout." },
+                { time: "09:15 AM", meal: "Breakfast", items: "🍳 4 Whole Eggs (boiled/scrambled) + 2 Chapatis", why: "Crucial for repairing muscles immediately after workout." },
+                { time: "02:00 PM", meal: "Lunch", items: "🍱 2 Chapatis + 1 Bowl Dal + 50g Soya Chunks", why: "Soya chunks are the cheapest, highest protein source." },
+                { time: "05:00 PM", meal: "Evening Snack", items: "🍞 2 Slices Brown Bread + 1 tbsp Peanut Butter", why: "Keeps energy up for the final hours of your shift." },
+                { time: "08:00 PM", meal: "Dinner", items: "🥗 2 Chapatis + Green Veggies (Spinach) + 1 Glass Milk", why: "Milk provides slow-digesting casein protein for overnight recovery." }
+            ],
+            "Tue": [
+                { time: "07:45 AM", meal: "Pre-Workout", items: "🍎 1 Apple + 10 Almonds", why: "Light pre-workout carbohydrates." },
+                { time: "09:15 AM", meal: "Breakfast", items: "🥤 40g Sattu Drink + 2 Boiled Eggs", why: "Sattu is a cheap, cooling protein staple. Eggs complete the profile." },
+                { time: "02:00 PM", meal: "Lunch", items: "🍱 3 Chapatis + 1 Big Bowl Chana Masala (Chickpeas)", why: "Chickpeas provide dense carbohydrates and protein." },
+                { time: "05:00 PM", meal: "Evening Snack", items: "🥣 200g Curd (Dahi) + 1 Banana", why: "Probiotics for digestion and sustained energy." },
+                { time: "08:00 PM", meal: "Dinner", items: "🥗 2 Chapatis + 3 Egg Bhurji + Side Salad", why: "High protein dinner to fuel overnight muscle synthesis." }
+            ],
+            "Wed": [
+                { time: "07:45 AM", meal: "Pre-Workout", items: "🍌 1 Ripe Banana", why: "Fast energy." },
+                { time: "09:15 AM", meal: "Breakfast", items: "🥞 2 Besan Chillas + 100g Curd", why: "Besan (gram flour) is a great cheap vegetarian protein." },
+                { time: "02:00 PM", meal: "Lunch", items: "🍛 1 Bowl Rice + 1 Bowl Rajma + 50g Soya Chunks", why: "Rajma Chawal is a classic complete amino-acid meal." },
+                { time: "05:00 PM", meal: "Evening Snack", items: "🥜 50g Roasted Peanuts/Makhana + Tea", why: "Healthy fats and protein to curb work-shift hunger." },
+                { time: "08:00 PM", meal: "Dinner", items: "🥗 2 Chapatis + Soya Chunks Stir-fry (Dry)", why: "Hitting the protein target before bed." }
+            ],
+            "Thu": [
+                { time: "07:45 AM", meal: "Pre-Workout", items: "🥜 2 Dates + Small handful peanuts", why: "Dates give an explosive sugar rush for intense exercise." },
+                { time: "09:15 AM", meal: "Breakfast", items: "🍳 4 Scrambled Eggs + 2 Slices Toasted Bread", why: "Quick, heavy protein hit." },
+                { time: "02:00 PM", meal: "Lunch", items: "🍱 1 Bowl Rice + Dal + 2 Boiled Eggs", why: "Adding eggs to lunch drastically increases the biological value of the meal." },
+                { time: "05:00 PM", meal: "Evening Snack", items: "🥤 30g Sattu mixed with water & lemon", why: "Liquid protein, very fast to consume while working." },
+                { time: "08:00 PM", meal: "Dinner", items: "🥗 2 Chapatis + Mixed Dal + 1 Glass Milk", why: "Mixed dal provides various amino acids; milk provides casein." }
+            ],
+            "Fri": [
+                { time: "07:45 AM", meal: "Pre-Workout", items: "🍌 1 Ripe Banana", why: "Classic pre-workout staple." },
+                { time: "09:15 AM", meal: "Breakfast", items: "🥣 1 Bowl Oats cooked in Milk + 1 tbsp Peanut Butter", why: "Oats fill up muscle glycogen stores effectively." },
+                { time: "02:00 PM", meal: "Lunch", items: "🍱 3 Chapatis + Soya Chunks Curry (50g)", why: "Soya ensures protein targets are met cheaply." },
+                { time: "05:00 PM", meal: "Evening Snack", items: "🥗 Sprouted Moong Dal Salad (1 Bowl)", why: "Sprouts are incredibly high in bioavailable nutrients." },
+                { time: "08:00 PM", meal: "Dinner", items: "🍛 1 Bowl Rice + Egg Curry (3 Eggs)", why: "Delicious, satisfying high-protein end to the work week." }
+            ],
+            "Sat": [
+                { time: "07:45 AM", meal: "Wake-up", items: "🍎 1 Apple", why: "Rest day; lighter morning carbs needed." },
+                { time: "09:15 AM", meal: "Breakfast", items: "🍲 Poha (with peanuts/peas) + 2 Boiled Eggs", why: "A balanced, enjoyable weekend breakfast." },
+                { time: "02:00 PM", meal: "Lunch", items: "🍱 1 Bowl Rice + Chana Dal + 100g Curd", why: "Classic Indian comfort food for recovery." },
+                { time: "05:00 PM", meal: "Evening Snack", items: "🍞 1 Slice Bread + Peanut Butter", why: "Keeps metabolism active." },
+                { time: "08:00 PM", meal: "Dinner", items: "🥗 2 Chapatis + 100g Paneer Bhurji", why: "Paneer is excellent for weekend recovery and muscle growth." }
+            ],
+            "Sun": [
+                { time: "07:45 AM", meal: "Wake-up", items: "🍌 1 Ripe Banana", why: "Light morning start." },
+                { time: "09:15 AM", meal: "Breakfast", items: "🥞 1 Aloo Paratha + 2 Boiled Eggs", why: "Heavy carbs to refill energy for Monday's workout." },
+                { time: "02:00 PM", meal: "Lunch", items: "🍛 1 Bowl Rice + Rajma + 50g Soya Chunks", why: "Massive protein and carb load." },
+                { time: "05:00 PM", meal: "Evening Snack", items: "🥜 Handful of Peanuts", why: "Light snack." },
+                { time: "08:00 PM", meal: "Dinner", items: "🥗 1 Bowl Khichdi + 100g Curd", why: "Very light on the stomach, promotes deep sleep." }
+            ]
+        };
+
+        // 2. WORKOUT DATA (DAY BY DAY) WITH EXERCISE DETAILS
         const workoutData = {
             "Mon": {
                 title: "Upper Body & Upper Abs",
-                target: [85, 10, 70, 10, 10], // Radar Data: Upper, Lower, Core, Cardio, Agility
+                target: [85, 10, 70, 10, 10], 
                 exercises: [
-                    { name: "Standard Push-Ups", reps: "3 sets x 12-15 reps", note: "Keep back straight. Drop to knees if you fail." },
-                    { name: "Pike Push-Ups", reps: "3 sets x 8-12 reps", note: "Hips high in the air, targets the shoulders." },
-                    { name: "Reverse Snow Angels", reps: "3 sets x 15 reps", note: "Lie on stomach, squeeze back muscles hard." },
-                    { name: "Crunches", reps: "3 sets x 20 reps", note: "Squeeze the top of your stomach. Don't pull neck." },
-                    { name: "Standard Plank", reps: "3 sets x 45 seconds", note: "Brace core as if someone is going to punch your stomach." }
+                    { name: "Standard Push-Ups", reps: "3 sets x 12-15 reps", note: "Keep back straight. Drop to knees if you fail.", desc: "The ultimate chest and tricep builder.", steps: "1. Hands slightly wider than shoulders.<br>2. Lower body until chest is 1 inch from floor.<br>3. Push back up powerfully.", visual: "💪(°_°)👉 <br> ⬇️ <br> ᕙ(°_°)ᕗ" },
+                    { name: "Pike Push-Ups", reps: "3 sets x 8-12 reps", note: "Hips high in the air, targets the shoulders.", desc: "Builds broad shoulders without weights.", steps: "1. Get into a push-up position.<br>2. Walk feet forward so your hips point up (like an upside-down V).<br>3. Lower top of head toward the floor between hands.", visual: " /\\ <br> ( ) " },
+                    { name: "Reverse Snow Angels", reps: "3 sets x 15 reps", note: "Lie on stomach, squeeze back muscles hard.", desc: "Essential for posture and back muscles.", steps: "1. Lie flat on your stomach, arms overhead.<br>2. Lift chest and arms off floor.<br>3. Sweep arms down to your sides, squeezing shoulder blades together.", visual: " 🕊️ (Face down, arms sweeping) " },
+                    { name: "Crunches", reps: "3 sets x 20 reps", note: "Squeeze the top of your stomach.", desc: "Builds the top two blocks of the 6-pack.", steps: "1. Lie on back, knees bent.<br>2. Hands lightly behind ears (don't pull neck!).<br>3. Lift shoulder blades off floor, squeeze abs.", visual: " 🧍‍♂️➡️🦐 " },
+                    { name: "Standard Plank", reps: "3 sets x 45 seconds", note: "Brace core as if someone is going to punch your stomach.", desc: "Strengthens the deep core for a flat stomach.", steps: "1. Rest on forearms and toes.<br>2. Body in a perfectly straight line.<br>3. Squeeze glutes and abs tightly.", visual: " ➖ (Straight as a board) " }
                 ]
             },
             "Tue": {
                 title: "Legs & Lower Abs",
                 target: [10, 90, 80, 20, 20],
                 exercises: [
-                    { name: "Bodyweight Squats", reps: "3 sets x 20 reps", note: "Go deep. Thighs parallel to the floor." },
-                    { name: "Reverse Lunges", reps: "3 sets x 12 reps (per leg)", note: "Step backward, keeps knees safe." },
-                    { name: "Glute Bridges", reps: "3 sets x 15 reps", note: "Lie on back, thrust hips to ceiling, squeeze glutes." },
-                    { name: "Lying Leg Raises", reps: "3 sets x 15 reps", note: "Crucial for the lower 'V' of the 6-pack." },
-                    { name: "Mountain Climbers", reps: "3 sets x 30 seconds", note: "Fast pace, keep hips low." }
+                    { name: "Bodyweight Squats", reps: "3 sets x 20 reps", note: "Go deep. Thighs parallel to the floor.", desc: "Builds thighs and glutes.", steps: "1. Feet shoulder-width apart.<br>2. Sit back as if into a chair.<br>3. Keep chest up, push through heels to stand.", visual: " 🧍‍♂️ ⬇️ 🪑 " },
+                    { name: "Reverse Lunges", reps: "3 sets x 12 reps (per leg)", note: "Step backward, keeps knees safe.", desc: "Great for leg symmetry and balance.", steps: "1. Stand tall.<br>2. Step one foot backward and drop back knee toward floor.<br>3. Push off front foot to return to standing.", visual: " 🚶‍♂️➡️ 🧎‍♂️ " },
+                    { name: "Glute Bridges", reps: "3 sets x 15 reps", note: "Lie on back, thrust hips to ceiling.", desc: "Activates the glutes.", steps: "1. Lie on back, knees bent, feet flat.<br>2. Push hips up toward ceiling.<br>3. Squeeze glutes hard at the top.", visual: " _/\\_ (Hips up) " },
+                    { name: "Lying Leg Raises", reps: "3 sets x 15 reps", note: "Crucial for the lower 'V' of the 6-pack.", desc: "Targets the hardest part of the abs: the lower core.", steps: "1. Lie flat on back, legs straight.<br>2. Keep lower back pressed hard into floor.<br>3. Lift both legs to 90 degrees, lower slowly.", visual: " L ➡️ _ " },
+                    { name: "Mountain Climbers", reps: "3 sets x 30 seconds", note: "Fast pace, keep hips low.", desc: "Core and cardio burner.", steps: "1. Start in push-up position.<br>2. Drive one knee rapidly toward chest.<br>3. Alternate legs quickly like running in place.", visual: " 🏃‍♂️ (In pushup position) " }
                 ]
             },
             "Wed": {
                 title: "Active Recovery Day",
                 target: [10, 10, 10, 40, 10],
                 exercises: [
-                    { name: "Light Walking", reps: "20-30 minutes", note: "A brisk walk to get blood flowing." },
-                    { name: "Stretching", reps: "10 minutes", note: "Stretch chest, legs, and lower back." }
+                    { name: "Light Walking", reps: "20-30 minutes", note: "A brisk walk to get blood flowing.", desc: "Speeds up muscle recovery.", steps: "1. Go outside or walk around house.<br>2. Keep a brisk but conversational pace.", visual: " 🚶‍♂️🚶‍♂️🚶‍♂️ " },
+                    { name: "Stretching", reps: "10 minutes", note: "Stretch chest, legs, and lower back.", desc: "Prevents injury and stiffness.", steps: "1. Touch your toes.<br>2. Stretch arms across chest.<br>3. Do gentle torso twists.", visual: " 🧘‍♂️ " }
                 ]
             },
             "Thu": {
                 title: "Upper Body & Obliques",
                 target: [85, 10, 80, 10, 10],
                 exercises: [
-                    { name: "Wide Push-Ups", reps: "3 sets x 12-15 reps", note: "Hands wider than shoulders. Targets outer chest." },
-                    { name: "Diamond Push-Ups", reps: "3 sets x 8-12 reps", note: "Hands form diamond under chest. Targets triceps/inner chest." },
-                    { name: "Superman Holds", reps: "3 sets x 20 seconds", note: "Lie on stomach, lift arms and legs off floor." },
-                    { name: "Bicycle Crunches", reps: "3 sets x 20 reps", note: "Twist fully. Targets the sides of the abs." },
-                    { name: "Side Plank", reps: "3 sets x 30 sec (per side)", note: "Keep body in a straight line." }
+                    { name: "Wide Push-Ups", reps: "3 sets x 12-15 reps", note: "Hands wider than shoulders. Targets outer chest.", desc: "Builds a wider chest.", steps: "1. Hands placed wider than shoulder width.<br>2. Lower chest to floor.<br>3. Push up.", visual: " < 🧍‍♂️ > " },
+                    { name: "Diamond Push-Ups", reps: "3 sets x 8-12 reps", note: "Hands form diamond under chest.", desc: "Massive triceps and inner chest builder.", steps: "1. Put hands close together forming a diamond shape with thumbs and index fingers.<br>2. Lower chest to hands.<br>3. Push up.", visual: " 💎 (Hands shape) " },
+                    { name: "Superman Holds", reps: "3 sets x 20 seconds", note: "Lie on stomach, lift arms and legs off floor.", desc: "Lower back strength.", steps: "1. Lie face down, arms extended forward.<br>2. Lift arms, chest, and legs off floor simultaneously.<br>3. Hold the position.", visual: " 🦸‍♂️ (Flying pose on floor) " },
+                    { name: "Bicycle Crunches", reps: "3 sets x 20 reps", note: "Twist fully. Targets the sides of the abs.", desc: "Builds the obliques (sides of the 6-pack).", steps: "1. Lie on back, hands behind head.<br>2. Bring left elbow to right knee while extending left leg.<br>3. Switch sides in a pedaling motion.", visual: " 🚴‍♂️ (On your back) " },
+                    { name: "Side Plank", reps: "3 sets x 30 sec (per side)", note: "Keep body in a straight line.", desc: "Deep oblique strength.", steps: "1. Rest on one forearm and side of foot.<br>2. Lift hips so body is a straight line.<br>3. Hold, then switch sides.", visual: " / (Tilted body line) " }
                 ]
             },
             "Fri": {
                 title: "Full Body HIIT & 6-Pack Burner",
                 target: [60, 60, 90, 85, 80],
                 exercises: [
-                    { name: "Burpees", reps: "3 sets x 10 reps", note: "Explosive movement. Jump high." },
-                    { name: "Jump Squats", reps: "3 sets x 15 reps", note: "Land softly on your toes." },
-                    { name: "Push-Ups to failure", reps: "3 sets x MAX reps", note: "Do as many as possible until you collapse." },
-                    { name: "Hollow Body Hold", reps: "3 sets x 30 seconds", note: "Lower back glued to floor. Advanced ab move." },
-                    { name: "Russian Twists", reps: "3 sets x 30 reps", note: "Tap floor on each side." }
+                    { name: "Burpees", reps: "3 sets x 10 reps", note: "Explosive movement. Jump high.", desc: "Ultimate full-body fat burner.", steps: "1. Drop into a squat, place hands on floor.<br>2. Jump feet back to push-up position.<br>3. Jump feet forward, stand up, and jump high.", visual: " 🧍‍♂️ ⬇️ 🏃‍♂️ ⬆️ 🧍‍♂️ " },
+                    { name: "Jump Squats", reps: "3 sets x 15 reps", note: "Land softly on your toes.", desc: "Explosive leg power.", steps: "1. Perform a normal squat.<br>2. Explode upward into a jump.<br>3. Land softly and immediately go into next squat.", visual: " 🪑 ⬆️ 🚀 " },
+                    { name: "Push-Ups to failure", reps: "3 sets x MAX reps", note: "Do as many as possible.", desc: "Chest burnout.", steps: "1. Do standard push-ups until you physically cannot push back up.", visual: " 💯 " },
+                    { name: "Hollow Body Hold", reps: "3 sets x 30 seconds", note: "Lower back glued to floor.", desc: "Advanced gymnast core hold.", steps: "1. Lie on back.<br>2. Lift legs 6 inches off ground. Lift shoulders off ground, arms overhead.<br>3. Lower back MUST be touching floor.", visual: " 🍌 (Body shaped like a banana) " },
+                    { name: "Russian Twists", reps: "3 sets x 30 reps", note: "Tap floor on each side.", desc: "Rotational core strength.", steps: "1. Sit on floor, lean back slightly, lift feet.<br>2. Clasp hands.<br>3. Twist torso to tap floor on left, then right.", visual: " 🔄 (Twisting motion) " }
                 ]
             },
             "Sat": {
                 title: "Weekend Rest",
                 target: [0, 0, 0, 0, 0],
                 exercises: [
-                    { name: "Total Rest", reps: "-", note: "Muscles grow when you rest. Eat your protein!" },
-                    { name: "Meal Prep", reps: "-", note: "Boil eggs or prep soya chunks for the coming week." }
+                    { name: "Total Rest", reps: "-", note: "Muscles grow when you rest. Eat your protein!", desc: "Recovery phase.", steps: "1. Relax.<br>2. Stick to the meal plan.", visual: " 🛋️ " },
+                    { name: "Meal Prep", reps: "-", note: "Boil eggs or prep soya chunks for the coming week.", desc: "Preparation phase.", steps: "1. Prepare ingredients for Monday-Friday to save time.", visual: " 👨‍🍳 " }
                 ]
             }
         };
 
-        // RENDER TIMELINE
+        // DOM ELEMENTS
         const timelineContainer = document.getElementById('timeline-container');
         const timelineDetail = document.getElementById('timeline-detail');
+        const modalOverlay = document.getElementById('modal-overlay');
+        const modalContent = document.getElementById('modal-content');
+        const modalBody = document.getElementById('modal-body');
+        const closeModalBtn = document.getElementById('close-modal');
         let activeTimelineNode = null;
+        let radarChartInstance = null;
 
+        // 3. RENDER TIMELINE
         timelineData.forEach((item) => {
             const div = document.createElement('div');
-            // Style differently if it's a food block vs action block
-            let bgClass = item.type === 'food' ? 'bg-green-50/50' : '';
-            if (item.highlight) bgClass = 'bg-blue-50 border-blue-300';
+            let bgClass = item.highlight ? 'bg-blue-50 border-blue-300' : '';
             
             div.className = `timeline-item p-3 mb-2 rounded-r-lg ${bgClass}`;
             div.innerHTML = `
@@ -337,9 +415,61 @@
             timelineContainer.appendChild(div);
         });
 
-        // RENDER WORKOUTS
-        let radarChartInstance = null;
-        
+        // 4. RENDER WORKOUTS & MODAL LOGIC
+        function openModal(day, exerciseIndex) {
+            const ex = workoutData[day].exercises[exerciseIndex];
+            
+            modalBody.innerHTML = `
+                <div class="text-center mb-6">
+                    <div class="text-4xl mb-2">${ex.visual || '🏋️'}</div>
+                    <h2 class="text-2xl font-bold text-gray-900">${ex.name}</h2>
+                    <div class="inline-block mt-2 bg-blue-100 text-blue-800 font-bold px-3 py-1 rounded-full text-sm">${ex.reps}</div>
+                </div>
+                
+                <div class="space-y-4">
+                    <div class="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                        <h4 class="font-bold text-gray-800 flex items-center gap-2 mb-2"><span>🎯</span> Target / Purpose</h4>
+                        <p class="text-sm text-gray-600">${ex.desc}</p>
+                    </div>
+
+                    <div class="bg-blue-50/50 p-4 rounded-lg border border-blue-100">
+                        <h4 class="font-bold text-blue-900 flex items-center gap-2 mb-2"><span>📋</span> How to Perform</h4>
+                        <p class="text-sm text-gray-700 leading-relaxed">${ex.steps}</p>
+                    </div>
+
+                    <div class="bg-orange-50 p-4 rounded-lg border border-orange-100">
+                        <h4 class="font-bold text-orange-800 flex items-center gap-2 mb-1"><span>⚠️</span> Crucial Form Tip</h4>
+                        <p class="text-sm text-gray-700 font-medium">${ex.note}</p>
+                    </div>
+                </div>
+            `;
+
+            modalOverlay.classList.remove('hidden');
+            document.body.classList.add('modal-open');
+            // Small timeout to allow display:block to apply before animating opacity/transform
+            setTimeout(() => {
+                modalOverlay.classList.remove('opacity-0');
+                modalContent.classList.remove('scale-95');
+                modalContent.classList.add('scale-100');
+            }, 10);
+        }
+
+        function closeModal() {
+            modalOverlay.classList.add('opacity-0');
+            modalContent.classList.remove('scale-100');
+            modalContent.classList.add('scale-95');
+            document.body.classList.remove('modal-open');
+            
+            setTimeout(() => {
+                modalOverlay.classList.add('hidden');
+            }, 300); // match CSS transition duration
+        }
+
+        closeModalBtn.addEventListener('click', closeModal);
+        modalOverlay.addEventListener('click', (e) => {
+            if (e.target === modalOverlay) closeModal();
+        });
+
         function renderWorkout(day) {
             const data = workoutData[day];
             const container = document.getElementById('workout-content');
@@ -352,12 +482,16 @@
             
             data.exercises.forEach((ex, i) => {
                 html += `
-                    <div class="flex items-start gap-3 p-3 bg-white rounded-lg border border-gray-100 shadow-sm">
-                        <div class="bg-blue-100 text-blue-800 rounded-full w-6 h-6 flex items-center justify-center font-bold text-xs flex-shrink-0 mt-0.5">${i+1}</div>
-                        <div>
-                            <div class="font-bold text-gray-800 text-sm">${ex.name}</div>
-                            <div class="text-xs text-blue-700 font-bold mt-0.5 mb-1 bg-blue-50 inline-block px-2 py-0.5 rounded">${ex.reps}</div>
-                            <div class="text-xs text-gray-600 leading-tight">${ex.note}</div>
+                    <div class="exercise-card flex items-start justify-between gap-3 p-3 bg-white rounded-lg border border-gray-200 shadow-sm" onclick="openModal('${day}', ${i})">
+                        <div class="flex items-start gap-3">
+                            <div class="bg-blue-100 text-blue-800 rounded-full w-7 h-7 flex items-center justify-center font-bold text-xs flex-shrink-0 mt-0.5 shadow-inner">${i+1}</div>
+                            <div>
+                                <div class="font-bold text-gray-800 text-sm md:text-base">${ex.name}</div>
+                                <div class="text-xs text-blue-700 font-bold mt-1 bg-blue-50 inline-block px-2 py-0.5 rounded border border-blue-100">${ex.reps}</div>
+                            </div>
+                        </div>
+                        <div class="text-gray-400 self-center hidden sm:block">
+                            <span class="text-xs uppercase font-semibold tracking-wider bg-gray-100 px-2 py-1 rounded">Click for visual ℹ️</span>
                         </div>
                     </div>
                 `;
@@ -365,11 +499,10 @@
             
             html += `</div>`;
             container.innerHTML = html;
-
             updateRadarChart(data.target);
         }
 
-        // TAB LOGIC
+        // 5. TAB LOGIC
         const tabBtns = document.querySelectorAll('.tab-btn');
         tabBtns.forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -382,16 +515,64 @@
                 target.classList.add('active', 'bg-blue-600', 'text-white', 'border-blue-600', 'shadow-md');
                 
                 renderWorkout(target.dataset.day);
-                
-                // Scroll tab into view smoothly on mobile
                 target.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
             });
         });
 
-        // CHARTS
+        // 5.5 DIET TAB LOGIC
+        function renderDiet(day) {
+            const data = dietData[day];
+            const container = document.getElementById('diet-content');
+            
+            let html = `
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-blue-600 text-white text-sm uppercase tracking-wider">
+                            <th class="p-4 font-semibold rounded-tl-lg whitespace-nowrap">Time</th>
+                            <th class="p-4 font-semibold whitespace-nowrap">Meal</th>
+                            <th class="p-4 font-semibold rounded-tr-lg">Exact Quantities / Items</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-sm text-gray-800 divide-y divide-gray-200">
+            `;
+            
+            data.forEach((row, index) => {
+                const bgClass = index % 2 === 0 ? 'hover:bg-blue-50' : 'bg-gray-50 hover:bg-blue-50';
+                html += `
+                    <tr class="${bgClass} transition-colors">
+                        <td class="p-4 font-bold text-blue-700 whitespace-nowrap">${row.time}</td>
+                        <td class="p-4 font-semibold whitespace-nowrap">${row.meal}</td>
+                        <td class="p-4">${row.items} <br><span class="text-xs text-gray-500">${row.why}</span></td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                    </tbody>
+                </table>
+            `;
+            container.innerHTML = html;
+        }
+
+        const dietTabBtns = document.querySelectorAll('.diet-tab-btn');
+        dietTabBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                dietTabBtns.forEach(b => {
+                    b.classList.remove('active', 'bg-blue-600', 'text-white', 'border-blue-600', 'shadow-md');
+                    b.classList.add('bg-white', 'text-gray-600', 'border-gray-200');
+                });
+                const target = e.target;
+                target.classList.remove('bg-white', 'text-gray-600', 'border-gray-200');
+                target.classList.add('active', 'bg-blue-600', 'text-white', 'border-blue-600', 'shadow-md');
+                
+                renderDiet(target.dataset.day);
+                target.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            });
+        });
+
+        // 6. CHARTS
         function updateRadarChart(targetData) {
             const ctx = document.getElementById('workoutRadarChart').getContext('2d');
-            
             if (radarChartInstance) {
                 radarChartInstance.data.datasets[0].data = targetData;
                 radarChartInstance.update();
@@ -403,7 +584,7 @@
                         datasets: [{
                             label: 'Activation Level',
                             data: targetData,
-                            backgroundColor: 'rgba(37, 99, 235, 0.2)', // Tailwind Blue-600 with opacity
+                            backgroundColor: 'rgba(37, 99, 235, 0.2)',
                             borderColor: 'rgba(37, 99, 235, 1)',
                             pointBackgroundColor: 'rgba(37, 99, 235, 1)',
                             borderWidth: 2,
@@ -421,12 +602,7 @@
                                 ticks: { display: false, min: 0, max: 100 }
                             }
                         },
-                        plugins: {
-                            legend: { display: false },
-                            tooltip: {
-                                enabled: false // Disabled for cleaner mobile UI, radar shape is intuitive enough
-                            }
-                        }
+                        plugins: { legend: { display: false }, tooltip: { enabled: false } }
                     }
                 });
             }
@@ -437,14 +613,10 @@
             new Chart(ctx, {
                 type: 'doughnut',
                 data: {
-                    labels: ['Protein (Soya, Eggs, Dal)', 'Carbs (Rice, Oats, Banana)', 'Fats (Peanuts, Oil)'],
+                    labels: ['Protein (Soya, Eggs, Dal)', 'Carbs (Roti, Banana)', 'Fats (Peanuts, Milk)'],
                     datasets: [{
-                        data: [30, 50, 20],
-                        backgroundColor: [
-                            '#DC2626', // Red for protein
-                            '#D97706', // Yellow/Orange for carbs
-                            '#2563EB'  // Blue for fats
-                        ],
+                        data: [35, 45, 20],
+                        backgroundColor: ['#DC2626', '#D97706', '#2563EB'],
                         borderWidth: 0,
                         hoverOffset: 5
                     }]
@@ -454,15 +626,7 @@
                     responsive: true,
                     cutout: '75%',
                     plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                font: { family: 'Inter', size: 11 },
-                                color: '#475569',
-                                boxWidth: 12,
-                                padding: 15
-                            }
-                        }
+                        legend: { position: 'bottom', labels: { font: { family: 'Inter', size: 11 }, color: '#475569', boxWidth: 12, padding: 15 } }
                     }
                 }
             });
@@ -470,12 +634,9 @@
 
         // INITIALIZATION
         renderWorkout("Mon");
+        renderDiet("Mon");
         initDoughnutChart();
-        
-        // Auto-click the morning workout block on load
-        setTimeout(() => {
-            timelineContainer.children[3].click(); // Clicks the Breakfast/Diet block to show the diet example immediately
-        }, 100);
+        setTimeout(() => { timelineContainer.children[2].click(); }, 100);
         
     </script>
 </body>
